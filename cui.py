@@ -78,12 +78,7 @@ def run_app(stdscr):
         stdscr.move(cursor_screen_y, cursor_pos.x)
         stdscr.refresh()
         charcode = stdscr.getch()
-        if charcode == ord("\n"):
-            logging.info("enter pressed!")
-            cursor_pos.x = 0
-            cursor_pos.y += 1
-            entry += "\n"
-        elif charcode == curses.KEY_LEFT:
+        if charcode == curses.KEY_LEFT:
             if cursor_pos.x > 0:
                 cursor_pos.x -= 1
         elif charcode == curses.KEY_RIGHT:
@@ -95,11 +90,28 @@ def run_app(stdscr):
         elif charcode == curses.KEY_DOWN:
             if cursor_pos.y < n - 1:
                 cursor_pos.y += 1
+        elif charcode == curses.KEY_BACKSPACE:
+            entry = delet_entry_char(entry, cursor_pos, cols, -1)
+            if cursor_pos.x > 0:
+                cursor_pos.x -= 1
+            elif cursor_pos.y > 0:
+                cursor_pos.x = len(lines[cursor_pos.y])
+                cursor_pos.y -= 1
+        elif charcode == curses.KEY_HOME:
+            cursor_pos.x = 0
+        elif charcode == curses.KEY_END:
+            cursor_pos.x = len(lines[cursor_pos.y])
+        elif charcode == curses.KEY_DC:
+            entry = delet_entry_char(entry, cursor_pos, cols, 1)
         else:
             logging.info(f"current line: {lines[cursor_pos.y]}")
             char = chr(charcode)
             entry = edit_entry(entry, cursor_pos, cols, char)
-            cursor_pos.x += 1
+            if charcode == ord("\n"):
+                cursor_pos.y += 1
+                cursor_pos.x = 0
+            else:
+                cursor_pos.x += 1
 
 def main(stdscr):
     logging.basicConfig(filename="/tmp/foo.log",
@@ -130,6 +142,30 @@ def edit_entry(entry, cursor, cols, char):
             idx += x_idx
             before, after = entry[:idx], entry[idx:]
             entry = before + add_text + after
+            return entry
+
+        # Advance idx to the next line in entry
+        idx += len(line) + 1
+
+# Delete single character from multilined entry string
+def delet_entry_char(entry, cursor, cols, direction):
+    lines = wrap_str(entry, cols)
+    if not lines:
+        return char
+    # index within the multilined entry
+    idx = 0
+    for line_number, line in enumerate(lines):
+        if line_number == cursor.y:
+            add_text = ""
+            if cursor.x > len(line):
+                # do nothing
+                return entry
+            x_idx = cursor.x
+            idx += x_idx
+            if direction == -1:
+                idx -= 1
+            before, after = entry[:idx], entry[idx + 1:]
+            entry = before + after
             return entry
 
         # Advance idx to the next line in entry
